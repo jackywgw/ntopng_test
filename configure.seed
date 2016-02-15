@@ -44,21 +44,21 @@ GIT_BRANCH="@GIT_BRANCH@"
 PRO_GIT_RELEASE="@PRO_GIT_RELEASE@"
 PRO_GIT_DATE="@PRO_GIT_DATE@"
 
-AC_MSG_CHECKING(for nDPI)
-NDPI_HOME=./nDPI
+AC_MSG_CHECKING(for L7)
+NDPI_HOME=./L7
 if test -d "$NDPI_HOME" ; then :
    AC_MSG_RESULT(found in $NDPI_HOME)
 else
-   NDPI_HOME=../nDPI
+   NDPI_HOME=../L7
    if test -d "$NDPI_HOME"; then :
       AC_MSG_RESULT(found in $NDPI_HOME)
    else
-      NDPI_HOME=$HOME/nDPI
+      NDPI_HOME=$HOME/L7
       if test -d "$NDPI_HOME"; then :
         AC_MSG_RESULT(found in $NDPI_HOME)
       else
         AC_MSG_RESULT(not found)
-        echo "Please do cd ..; git clone https://github.com/ntop/nDPI.git; cd nDPI; ./autogen.sh; make; cd ../ntopng"
+        echo "Please do cd ..; git clone https://github.com/jackywgw/L7.git; cd L7; ./autogen.sh; make; cd ../ntopng_test"
         echo " and try again"
         exit
       fi
