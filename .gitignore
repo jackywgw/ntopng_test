@@ -71,3 +71,5 @@ pro
 scripts/lua/pro
 tools/gdbsudo
 nbproject
+tags
+cscope*
