@@ -92,7 +92,11 @@ int main(int argc, char *argv[])
 #ifdef WIN32
   initWinsock32();
 #endif
-
+   /*std::nothrow ----在内存不足时，new(std::nothrow)不会抛出异常，而是将指针值NULL
+    * 普通的new有一个异常类型std::bad_alloc。
+    * 但是早期的c++和c一样，new失败就直接返回一个0，和malloc一样。
+    * new(std::nothrow)就是用来做这个的*/
+  /*创建Ntop类和Prefs类*/
   if((ntop = new(std::nothrow)  Ntop(argv[0])) == NULL) _exit(0);
   if((prefs = new(std::nothrow) Prefs(ntop)) == NULL)   _exit(0);
 

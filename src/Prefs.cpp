@@ -829,14 +829,20 @@ int Prefs::checkOptions() {
 
 int Prefs::loadFromCLI(int argc, char *argv[]) {
   u_char c;
-
+  /*getopt_long() return the option character when a short option is recognized
+   * For a long option, they return val if flag is NULL, and 0 otherwise.
+   * If all command-line options have been parsed, return -1
+   * If encounters an option character that was not in optstring, then '?' is returned.
+   * getopt_long即可以处理短选项(k:eg:hi.....)，也可以处理长选项long_options*/
   while((c = getopt_long(argc, argv,
 			 "k:eg:hi:w:r:sg:m:n:p:qd:t:x:1:2:3:l:uvA:B:CD:E:F:N:G:HI:O:S:TU:X:W:VZ:",
 			 long_options, NULL)) != '?') {
+    /*getopt_long返回值类型是int，当所有option参数都解析完后，返回-1，而c为u_char,所以此处判断是否为255*/
     if(c == 255) break;
-    setOption(c, optarg);
+    /*根据获取的c值处理，c的返回值如果是短选项，就是短选项的值，如果是长选项，并且long_options中的flag=NULL，则返回long_options中的val值，optarg存储携带的参数*/
+    setOption(c, optarg);  
   }
-
+  /*http_port: ntopng http server 的端口,默认是CONST_DEFAULT_NTOP_PORT-3000,也就是我们登录ntopng页面时用的端口号*/
   if((http_port == 0) && (https_port == 0)) {
     ntop->getTrace()->traceEvent(TRACE_ERROR, "Both HTTP and HTTPS ports are disabled: quitting");
     exit(0);
