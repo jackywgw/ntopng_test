@@ -1,0 +1,5 @@
+host:".126.com"@NTES
+host:"mimg.127.net"@NTES
+host:".163.com"@NTES
+host:".126.net"@NTES
+host:".netease.com"@NTES
