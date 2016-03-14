@@ -105,8 +105,8 @@ int main(int argc, char *argv[])
     rc = prefs->loadFromFile(argv[1]);
   else
 #endif
-    rc = prefs->loadFromCLI(argc, argv);
-
+    rc = prefs->loadFromCLI(argc, argv); /*解析输入参数，并判断部分目录是否存在，如果不存在则返回-1*/
+  /*loadFromFile or loadFromCLI 返回 <0 ，直接返回-1*/
   if(rc < 0) return(-1);
 
   ntop->registerPrefs(prefs, false);

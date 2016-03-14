@@ -63,7 +63,9 @@ Ntop::Ntop(char *appName) {
 		     SHGFP_TYPE_CURRENT, working_dir) != S_OK) {
     strcpy(working_dir, "C:\\Windows\\Temp" /* "\\ntopng" */); // Fallback: it should never happen
   }
-
+  /*获取当前进程已加载模块的文件的完整路径,
+   *该函数只有在window下有，
+     函数执行失败，返回值为0*/
   // Get the full path and filename of this program
   if(GetModuleFileName(NULL, startup_dir, sizeof(startup_dir)) == 0) {
     startup_dir[0] = '\0';
@@ -81,15 +83,19 @@ Ntop::Ntop(char *appName) {
   dirs[1] = install_dir;
 #else
   /* Folder will be created lazily, avoid creating it now */
+  /*working_dir == /var/tmp/ntopng*/
   snprintf(working_dir, sizeof(working_dir), "%s/ntopng", CONST_DEFAULT_WRITABLE_DIR);
 
   umask(0);
-
+  /*getcwd将当前工作目录的完整路径输出保存到startup_dir中*/
   if(getcwd(startup_dir, sizeof(startup_dir)) == NULL)
     ntop->getTrace()->traceEvent(TRACE_ERROR, "Occurred while checking the current directory (errno=%d)", errno);
-
+  /*dirs的第一个参数设置为startup_dir*/
   dirs[0] = startup_dir;
-
+  /* dirs[0]=/usr/local/src/ntop/mygit/ntopng_test----当前工作目录
+   * dirs[1]=/usr/local/share/ntopng----有configure文件定义前缀
+   * dirs[2]=/usr/share/ntopng------固定
+   * */
   install_dir[0] = '\0';
 
   for(int i=0; dirs[i] != NULL; i++) {
@@ -97,8 +103,8 @@ Ntop::Ntop(char *appName) {
     struct stat statbuf;
 
     snprintf(path, sizeof(path), "%s/scripts/lua/index.lua", dirs[i]);
-    fixPath(path);
-
+    fixPath(path);/*用_代替路径中的.*/
+    /*stat return  information  about  a  file,此处还是用于判断文件是否存在*/
     if(stat(path, &statbuf) == 0) {
       snprintf(install_dir, sizeof(install_dir), "%s", dirs[i]);
       break;
@@ -126,7 +132,7 @@ Ntop::Ntop(char *appName) {
   udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
 
 #ifndef WIN32
-  setservent(1);
+  setservent(1);/*setservent用来打开/etc/services，如果入参为1，则接下来的getservbyname or getservbyport将不会自动关闭*/
 #endif
 }
 
@@ -140,7 +146,11 @@ Ntop::Ntop(char *appName) {
 */
 
 void Ntop::initTimezone() {
-  time_t now = time(NULL);
+  /* time() returns the time since the Epoch (00:00:00 UTC, January 1, 1970), measured in seconds*/
+  /*time_t time(time_t *t);---------------以秒为单位返回UTC时间
+   * struct tm* gmtime(time_t *t);----------以struct tm的形式返回UTC时间
+   * struct tm* localtime(const time_t *t);---------以struct tm的形式返回本地时间*/  
+  time_t now = time(NULL);//获取当前时间
   time_offset =(long)(mktime(localtime(&now)) - mktime(gmtime(&now)));
   memset(ifaceViews, 0, sizeof(ifaceViews));
 }
@@ -803,7 +813,7 @@ void Ntop::fixPath(char *str, bool replaceDots) {
 #ifdef WIN32
     if(str[i] == '/') str[i] = '\\';
 #endif
-
+    /*用_替换.*/
     if(replaceDots) {
       if((i > 0) && (str[i] == '.') && (str[i-1] == '.')) {
 	// ntop->getTrace()->traceEvent(TRACE_WARNING, "Invalid path detected %s", str);
@@ -841,10 +851,9 @@ char* Ntop::getValidPath(char *__path) {
   } else
     snprintf(_path, MAX_PATH, "%s", __path);
 
-  /* relative paths */
+   /* relative paths */
   for(int i=0; dirs[i] != NULL; i++) {
     char path[MAX_PATH];
-
     snprintf(path, sizeof(path), "%s/%s", dirs[i], _path);
     fixPath(path);
 

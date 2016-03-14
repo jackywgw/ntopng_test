@@ -788,7 +788,7 @@ int Prefs::setOption(int optkey, char *optarg) {
 
 int Prefs::checkOptions() {
 #ifndef WIN32
-  if(daemonize)
+  if(daemonize) /*windows 下默认为true，其它情况下默认为false*/
 #endif
     {
       char path[MAX_PATH];
@@ -802,22 +802,26 @@ int Prefs::checkOptions() {
       else
 	ntop->getTrace()->traceEvent(TRACE_ERROR, "Unable to create log %s", path);
     }
-
+  /*install_dir为-t 后面所跟的路径名称，这里的install_dir属于Prefs类
+   * 这里的意思是如果Prefs里面入参带了install_dir，则覆盖ntop里面的install_dir*/
   if(install_dir)
     ntop->set_install_dir(install_dir);
-
+  
   free(data_dir);
+  /*data_dir里面的路径为ntop类里面的install_dir*/
   data_dir = strdup(ntop->get_install_dir());
+  
+  docs_dir      = ntop->getValidPath(docs_dir);/*#define CONST_DEFAULT_DOCS_DIR       "httpdocs"*/
+  scripts_dir   = ntop->getValidPath(scripts_dir);/*检测工作目录下有没有文件夹scripts*/
+  callbacks_dir = ntop->getValidPath(callbacks_dir);/*检测工作目录下有没有文件夹scripts/callbacks*/
 
-  docs_dir      = ntop->getValidPath(docs_dir);
-  scripts_dir   = ntop->getValidPath(scripts_dir);
-  callbacks_dir = ntop->getValidPath(callbacks_dir);
-
+  /*如果有一个目录不存在，则返回-1*/
   if(!data_dir)         { ntop->getTrace()->traceEvent(TRACE_ERROR, "Unable to locate data dir");      return(-1); }
   if(!docs_dir[0])      { ntop->getTrace()->traceEvent(TRACE_ERROR, "Unable to locate docs dir");      return(-1); }
   if(!scripts_dir[0])   { ntop->getTrace()->traceEvent(TRACE_ERROR, "Unable to locate scripts dir");   return(-1); }
   if(!callbacks_dir[0]) { ntop->getTrace()->traceEvent(TRACE_ERROR, "Unable to locate callbacks dir"); return(-1); }
-
+  
+  /*如果目录最后是一个/或者\,则删除末尾的这两个符号*/
   ntop->removeTrailingSlash(docs_dir);
   ntop->removeTrailingSlash(scripts_dir);
   ntop->removeTrailingSlash(callbacks_dir);
@@ -847,7 +851,7 @@ int Prefs::loadFromCLI(int argc, char *argv[]) {
     ntop->getTrace()->traceEvent(TRACE_ERROR, "Both HTTP and HTTPS ports are disabled: quitting");
     exit(0);
   }
-
+  /*判断工作目录，httpdocs，script和script/callbacks目录是否存在，如果不存在，则返回-1*/
   return(checkOptions());
 }
 
