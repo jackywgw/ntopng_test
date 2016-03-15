@@ -32,7 +32,7 @@ AddressResolution::AddressResolution() {
 /* Format: 131.114.21.0/24,10.0.0.0/255.0.0.0 */
 bool AddressResolution::setLocalNetworks(char *rule) {
   char *net = strtok(rule, ",");
-
+  /*将rule中的通过逗号分隔的多个ip地址取出加入ip地址树localNetworks中*/
   while(net != NULL) {
     int16_t rc = -1;
 

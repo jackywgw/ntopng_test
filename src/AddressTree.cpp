@@ -71,7 +71,7 @@ static int fill_prefix_v6(prefix_t *prefix, struct in6_addr *addr, int bits, int
 static patricia_node_t* add_to_ptree(patricia_tree_t *tree, int family, void *addr, int bits) {
   prefix_t prefix;
   patricia_node_t *node;
-
+  /*将ip地址和掩码位数赋值到prefix类中*/
   if(family == AF_INET)
     fill_prefix_v4(&prefix, (struct in_addr*)addr, bits, tree->maxbits);
   else
@@ -133,17 +133,18 @@ patricia_node_t* ptree_add_rule(patricia_tree_t *ptree, char *line) {
     slash = bits;
     slash[0] = '\0';
   }
-
+  /*bits存储掩码位数*/
   bits++;
 
   ntop->getTrace()->traceEvent(TRACE_DEBUG, "Rule %s/%s", ip, bits);
-
+  
   if(strchr(ip, ':') != NULL) { /* IPv6 */
     if(inet_pton(AF_INET6, ip, &addr6) == 1)
       node = add_to_ptree(ptree, AF_INET6, &addr6, atoi(bits));
     else
       ntop->getTrace()->traceEvent(TRACE_ERROR, "Error parsing IPv6 %s\n", ip);
   } else { /* IPv4 */
+      /*笔者注：个人认为也可以用inet_aton,在linux下测试感觉是一样的。*/
     /* inet_aton(ip, &addr4) fails parsing subnets */
     int num_octets;
     u_int ip4_0 = 0, ip4_1 = 0, ip4_2 = 0, ip4_3 = 0;
@@ -236,17 +237,17 @@ bool AddressTree::removeAddress(char *net) {
 int16_t AddressTree::addAddress(char *_net) {
   patricia_node_t *node;
   char *net;
-
+  /*树中最大的地址个数为CONST_MAX_NUM_NETWORKS(255）*/
   if(numAddresses >= CONST_MAX_NUM_NETWORKS) {
     ntop->getTrace()->traceEvent(TRACE_ERROR, "Too many networks defined: ignored %s", _net);
     return -1;
   }
-  
+  /*创建并复制一份_net*/ 
   if((net = strdup(_net)) == NULL) {
     ntop->getTrace()->traceEvent(TRACE_WARNING, "Not enough memory");
     return -1;
   }
-
+  /*将net中的ip地址和掩码赋值到ptree中*/
   node = ptree_add_rule(ptree, net);
 
   free(net);

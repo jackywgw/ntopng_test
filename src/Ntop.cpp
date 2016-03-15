@@ -194,7 +194,7 @@ Ntop::~Ntop() {
 
 void Ntop::registerPrefs(Prefs *_prefs, bool quick_registration) {
   struct stat statbuf;
-
+  /*将prefs传入Ntop类的属性值中*/
   prefs = _prefs;
 
   if(!quick_registration) {
@@ -926,7 +926,7 @@ void Ntop::setLocalNetworks(char *_nets) {
   if(_nets == NULL) return;
 
   len = (u_int)strlen(_nets);
-
+  /*如果地址有“”，则删除对应的引号*/
   if((len > 2)
      && (_nets[0] == '"')
      && (_nets[len-1] == '"')) {

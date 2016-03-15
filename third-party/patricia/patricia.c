@@ -382,6 +382,7 @@ Ref_Prefix (prefix_t * prefix)
     return (NULL);
   if(prefix->ref_count == 0) {
     /* make a copy in case of a static prefix */
+     /*因为传入的prefix是在函数内分配的变量，内存在栈上，函数退出后内存就释放了，所以要在堆上分配一份*/
     return (New_Prefix2 (prefix->family, &prefix->add, prefix->bitlen, NULL));
   }
   prefix->ref_count++;
@@ -705,56 +706,56 @@ patricia_lookup (patricia_tree_t *patricia, prefix_t *prefix)
   assert (patricia);
   assert (prefix);
   assert (prefix->bitlen <= patricia->maxbits);
-
+  /*patricia tree的头结点不存在，则创建头结点,直接返回*/
   if(patricia->head == NULL) {
-    node = (patricia_node_t*)calloc(1, sizeof *node);
-    node->bit = prefix->bitlen;
-    node->prefix = Ref_Prefix (prefix);
+    node = (patricia_node_t*)calloc(1, sizeof *node); /*申请内存*/
+    node->bit = prefix->bitlen; /*将掩码位数赋值给结点的bit属性*/
+    node->prefix = Ref_Prefix (prefix);/*因为传入的prefix是在函数内分配的变量，内存在栈上，函数退出后内存就释放了，所以要在堆上分配一份*/
     node->parent = NULL;
     node->l = node->r = NULL;
     node->data = NULL;
     patricia->head = node;
-#ifdef PATRICIA_DEBUG
+//#ifdef PATRICIA_DEBUG
     fprintf (stderr, "patricia_lookup: new_node #0 %s/%d (head)\n",
 	     prefix_toa (prefix), prefix->bitlen);
-#endif /* PATRICIA_DEBUG */
+//#endif /* PATRICIA_DEBUG */
     patricia->num_active_node++;
     return (node);
   }
-
+  /*头结点已经存在,获取地址addr，掩码bitlen，Patricia树的头结点*/
   addr = prefix_touchar (prefix);
   bitlen = prefix->bitlen;
   node = patricia->head;
 
   while (node->bit < bitlen || node->prefix == NULL) {
 
-    if(node->bit < patricia->maxbits &&
-       BIT_TEST (addr[node->bit >> 3], 0x80 >> (node->bit & 0x07))) {
-      if(node->r == NULL)
-	break;
+      if(node->bit < patricia->maxbits &&
+              BIT_TEST (addr[node->bit >> 3], 0x80 >> (node->bit & 0x07))) {
+          if(node->r == NULL)
+              break;
 #ifdef PATRICIA_DEBUG
-      if(node->prefix)
-	fprintf (stderr, "patricia_lookup: take right %s/%d\n",
-		 prefix_toa (node->prefix), node->prefix->bitlen);
-      else
-	fprintf (stderr, "patricia_lookup: take right at %u\n", node->bit);
+          if(node->prefix)
+              fprintf (stderr, "patricia_lookup: take right %s/%d\n",
+                      prefix_toa (node->prefix), node->prefix->bitlen);
+          else
+              fprintf (stderr, "patricia_lookup: take right at %u\n", node->bit);
 #endif /* PATRICIA_DEBUG */
-      node = node->r;
-    }
-    else {
-      if(node->l == NULL)
-	break;
+          node = node->r;
+      }
+      else {
+          if(node->l == NULL)
+              break;
 #ifdef PATRICIA_DEBUG
-      if(node->prefix)
-	fprintf (stderr, "patricia_lookup: take left %s/%d\n",
-		 prefix_toa (node->prefix), node->prefix->bitlen);
-      else
-	fprintf (stderr, "patricia_lookup: take left at %u\n", node->bit);
+          if(node->prefix)
+              fprintf (stderr, "patricia_lookup: take left %s/%d\n",
+                      prefix_toa (node->prefix), node->prefix->bitlen);
+          else
+              fprintf (stderr, "patricia_lookup: take left at %u\n", node->bit);
 #endif /* PATRICIA_DEBUG */
-      node = node->l;
-    }
+          node = node->l;
+      }
 
-    assert (node);
+      assert (node);
   }
 
   assert (node->prefix);
