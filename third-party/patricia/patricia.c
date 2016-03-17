@@ -534,14 +534,17 @@ patricia_search_exact (patricia_tree_t *patricia, prefix_t *prefix)
   assert (patricia);
   assert (prefix);
   assert (prefix->bitlen <= patricia->maxbits);
-
+  /*树根为NULL，则直接返回NULL*/
   if(patricia->head == NULL)
     return (NULL);
-
+  /*取得树根，要查询的地址addr和掩码位数bitlen*/
   node = patricia->head;
   addr = prefix_touchar (prefix);
   bitlen = prefix->bitlen;
 
+  /*父节点的bit值必须要比待查询的小
+   * 如父节点是1.2.3.4/24, 待查询的是1.2.3.5/23，这个待查询的项不会在该父节点的子树上。
+   * 并且查找的bitlen必须在某个节点上存在，即node->bit == bitlen，否则会因为node == NULL而提前返回*/
   while (node->bit < bitlen) {
 
     if(BIT_TEST (addr[node->bit >> 3], 0x80 >> (node->bit & 0x07))) {
@@ -582,6 +585,8 @@ patricia_search_exact (patricia_tree_t *patricia, prefix_t *prefix)
     return (NULL);
   assert (node->bit == bitlen);
   assert (node->bit == node->prefix->bitlen);
+  /*结合掩码位数进行地址比较,如果在掩码下两者相等，则返回节点
+   * 如节点为1.2.3.4/24，要查找的为1.2.3.5/24，两者在24位掩码下是相等的*/
   if(comp_with_mask (prefix_tochar (node->prefix), prefix_tochar (prefix),
 		     bitlen)) {
 #ifdef PATRICIA_DEBUG
@@ -726,7 +731,8 @@ patricia_lookup (patricia_tree_t *patricia, prefix_t *prefix)
   addr = prefix_touchar (prefix);
   bitlen = prefix->bitlen;
   node = patricia->head;
-
+  /*只查找掩码位数比当前父结点大的结点，
+   * 说明这个棵树的子结点的掩码值一定大于对应父节点的值*/
   while (node->bit < bitlen || node->prefix == NULL) {
 
       if(node->bit < patricia->maxbits &&
@@ -763,9 +769,11 @@ patricia_lookup (patricia_tree_t *patricia, prefix_t *prefix)
   fprintf (stderr, "patricia_lookup: stop at %s/%d\n",
 	   prefix_toa (node->prefix), node->prefix->bitlen);
 #endif /* PATRICIA_DEBUG */
-
+  /*找到一个bit > 待查询bitlen的结点
+   * 取出该节点的地址test_addr*/
   test_addr = prefix_touchar (node->prefix);
   /* find the first bit different */
+  /*找到节点中的地址和待查询地址的第一个不同的bit位*/
   check_bit = (node->bit < bitlen)? node->bit: bitlen;
   differ_bit = 0;
   for (i = 0; (u_int)i*8 < check_bit; i++) {
@@ -790,7 +798,8 @@ patricia_lookup (patricia_tree_t *patricia, prefix_t *prefix)
 #ifdef PATRICIA_DEBUG
   fprintf (stderr, "patricia_lookup: differ_bit %d\n", differ_bit);
 #endif /* PATRICIA_DEBUG */
-
+  
+  /*向上找父节点，直到找到一个bit小于等于diff_bit数的结点,因为必须保证子结点的bit值必须大于父节点的bit值*/
   parent = node->parent;
   while (parent && parent->bit >= differ_bit) {
     node = parent;
@@ -803,7 +812,9 @@ patricia_lookup (patricia_tree_t *patricia, prefix_t *prefix)
       fprintf (stderr, "patricia_lookup: up to %u\n", node->bit);
 #endif /* PATRICIA_DEBUG */
   }
-
+  /*如果differ_bit与要查询的bitlen和节点的bit值相等，
+   * 1）节点的prefix不为NULL，则直接返回node
+   * 2）节点的prefix为NULL，将当前的prefix赋值给node中的prefix，并返回节点*/
   if(differ_bit == bitlen && node->bit == bitlen) {
     if(node->prefix) {
 #ifdef PATRICIA_DEBUG
@@ -820,7 +831,7 @@ patricia_lookup (patricia_tree_t *patricia, prefix_t *prefix)
     assert (node->data == NULL);
     return (node);
   }
-
+  /*根据当前要查询的prefix信息，创建一个新的结点*/
   new_node = (patricia_node_t*)calloc(1, sizeof *new_node);
   new_node->bit = prefix->bitlen;
   new_node->prefix = Ref_Prefix (prefix);
@@ -828,7 +839,12 @@ patricia_lookup (patricia_tree_t *patricia, prefix_t *prefix)
   new_node->l = new_node->r = NULL;
   new_node->data = NULL;
   patricia->num_active_node++;
-
+  /*如果当前节点的bit与differ_bit相等，则将新节点的父节点指向当前节点，将新节点赋值到当前节点的左右子节点
+   * BIT_TEST(addr[node->bit >> 3], 0x80 >> (node->bit & 0x07))
+   * 上面这个判断的意思是：
+   * 1)假设address= 1.2.3.4, bitlen = 25, node->bit = 24
+   * 2)BIT_TEST的意思就是将addr掩码后面的第一个字节，按照掩码后面分成两半，前面部分放到左节点，后面部分放到右节点
+   * 比如当前情况下就是addr[3] = 4,node->bit = 24,那么当addr[3]在0~127之间的话，就是放到左子节点，addr[3]在128~255之间，就是放到右子节点*/
   if(node->bit == differ_bit) {
     new_node->parent = node;
     if(node->bit < patricia->maxbits &&
@@ -846,7 +862,7 @@ patricia_lookup (patricia_tree_t *patricia, prefix_t *prefix)
 #endif /* PATRICIA_DEBUG */
     return (new_node);
   }
-
+  /*如果查询bitlen与差异differ_bit相等，则将新节点作为当前节点的父节点*/
   if(bitlen == differ_bit) {
     if(bitlen < patricia->maxbits &&
        BIT_TEST (test_addr[bitlen >> 3], 0x80 >> (bitlen & 0x07))) {
@@ -873,6 +889,7 @@ patricia_lookup (patricia_tree_t *patricia, prefix_t *prefix)
 #endif /* PATRICIA_DEBUG */
   }
   else {
+    /*为differ_bit创建一个新的结点，并将当前节点和新节点作为左右节点放入*/
     glue = (patricia_node_t*)calloc(1, sizeof *glue);
     glue->bit = differ_bit;
     glue->prefix = NULL;
